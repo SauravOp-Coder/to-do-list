@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Track My Day</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>📅 Track My Day</h1>
+    <p>Your personal productivity companion</p>
+  </header>
+
+  <main class="container">
+    <section class="summary-box">
+      <h2>📊 Your Progress Summary</h2>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <h3>Today</h3>
+          <p id="summary-today">--%</p>
+        </div>
+        <div class="summary-card">
+          <h3>Last 7 Days</h3>
+          <p id="summary-week">--%</p>
+        </div>
+        <div class="summary-card">
+          <h3>Last 30 Days</h3>
+          <p id="summary-month">--%</p>
+        </div>
+        <div class="summary-card">
+          <h3>Last 365 Days</h3>
+          <p id="summary-year">--%</p>
+        </div>
+      </div>
+    </section>
+    
+    <section class="task-section">
+      <div class="task-header">
+        <input type="text" id="taskInput" placeholder="Add new task..." />
+        <button onclick="addTask()">Add</button>
+      </div>
+      <ul id="taskList"></ul>
+    </section>
+
+    <section class="graph-section">
+      <div class="graph-card">
+        <h2>Today's Progress</h2>
+        <canvas id="chart"></canvas>
+      </div>
+      <div class="graph-card">
+        <h2>History Overview</h2>
+        <canvas id="historyChart"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
