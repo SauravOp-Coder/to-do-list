@@ -1,173 +1,230 @@
-let tasks = [];
-let history = JSON.parse(localStorage.getItem('history')) || {};
+let completionChart, historyChart;
+const today = new Date().toISOString().split("T")[0];
 
 function addTask() {
   const input = document.getElementById("taskInput");
-  const taskName = input.value.trim();
-  if (!taskName) return;
+  const list = document.getElementById("taskList");
 
-  const task = {
-    name: taskName,
-    completed: false,
-    percent: 0,
-  };
-  tasks.push(task);
+  if (input.value.trim() === "") return;
+
+  const li = createTaskElement(input.value, 0);
+  list.appendChild(li);
   input.value = "";
-  renderTasks();
-  updateChart();
-  updateHistory();
+  saveTasks();
+  updateCompletionChart();
+  updateHistoryChart();
 }
 
-function renderTasks() {
-  const taskList = document.getElementById("taskList");
-  taskList.innerHTML = "";
+function createTaskElement(text, progressValue) {
+  const li = document.createElement("li");
 
-  tasks.forEach((task, index) => {
-    const li = document.createElement("li");
+  const span = document.createElement("span");
+  span.textContent = " " + text;
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = task.completed;
-    checkbox.onchange = () => {
-      task.completed = checkbox.checked;
-      updateChart();
-      updateHistory();
-    };
+  const removeBtn = document.createElement("button");
+  removeBtn.textContent = "❌";
+  removeBtn.className = "remove-btn";
+  removeBtn.onclick = () => {
+    li.remove();
+    saveTasks();
+    updateCompletionChart();
+    updateHistoryChart();
+  };
 
-    const span = document.createElement("span");
-    span.textContent = task.name;
+  const progress = document.createElement("progress");
+  progress.max = 100;
+  progress.value = progressValue;
+  progress.className = "task-progress";
 
-    const input = document.createElement("input");
-    input.type = "number";
-    input.className = "percent-input";
-    input.value = task.percent;
-    input.oninput = () => {
-      task.percent = parseInt(input.value) || 0;
-      updateChart();
-      updateHistory();
-    };
+  const inputPercent = document.createElement("input");
+  inputPercent.type = "number";
+  inputPercent.min = 0;
+  inputPercent.max = 100;
+  inputPercent.value = progressValue;
+  inputPercent.className = "percent-input";
+  inputPercent.oninput = () => {
+    progress.value = inputPercent.value;
+    saveTasks();
+    updateCompletionChart();
+    updateHistoryChart();
+  };
 
-    const progress = document.createElement("progress");
-    progress.className = "task-progress";
-    progress.value = task.percent;
-    progress.max = 100;
+  li.appendChild(span);
+  li.appendChild(inputPercent);
+  li.appendChild(progress);
+  li.appendChild(removeBtn);
 
-    const removeBtn = document.createElement("button");
-    removeBtn.textContent = "Remove";
-    removeBtn.className = "remove-btn";
-    removeBtn.onclick = () => {
-      tasks.splice(index, 1);
-      renderTasks();
-      updateChart();
-      updateHistory();
-    };
+  return li;
+}
 
-    li.append(checkbox, span, input, progress, removeBtn);
-    taskList.appendChild(li);
+function saveTasks() {
+  const tasks = [];
+  document.querySelectorAll("#taskList li").forEach(li => {
+    const text = li.querySelector("span").textContent.trim();
+    const percent = parseInt(li.querySelector("input[type='number']").value);
+    tasks.push({ text, percent });
+  });
+
+  const allData = JSON.parse(localStorage.getItem("taskHistory") || "{}");
+  allData[today] = tasks;
+  localStorage.setItem("taskHistory", JSON.stringify(allData));
+}
+
+function loadTasks() {
+  const allData = JSON.parse(localStorage.getItem("taskHistory") || "{}");
+  const tasks = allData[today] || [];
+  const list = document.getElementById("taskList");
+  list.innerHTML = "";
+  tasks.forEach(task => {
+    const li = createTaskElement(task.text, task.percent);
+    list.appendChild(li);
   });
 }
 
-let chart = new Chart(document.getElementById("chart"), {
-  type: "doughnut",
-  data: {
-    labels: [],
-    datasets: [{
-      data: [],
-      backgroundColor: ["#4ade80", "#f87171", "#60a5fa", "#facc15", "#a78bfa"]
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: { legend: { position: 'bottom' } }
-  }
-});
+function updateCompletionChart() {
+  const tasks = [];
+  document.querySelectorAll("#taskList li").forEach(li => {
+    const text = li.querySelector("span").textContent.trim();
+    const percent = parseInt(li.querySelector("input[type='number']").value);
+    if (percent > 0) tasks.push({ text, percent });
+  });
 
-let historyChart = new Chart(document.getElementById("historyChart"), {
-  type: "bar",
-  data: {
-    labels: [],
-    datasets: [{
-      label: "Avg Completion %",
-      backgroundColor: "#6366f1",
-      data: []
-    }]
-  },
-  options: {
-    responsive: true,
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100
+  const labels = tasks.map(t => t.text);
+  const data = tasks.map(t => t.percent);
+
+  const ctx = document.getElementById("chart").getContext("2d");
+
+  if (completionChart) completionChart.destroy();
+
+  completionChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Task Completion (%)",
+        data: data,
+        backgroundColor: generateColors(data.length)
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `${context.label}: ${context.parsed}%`;
+            }
+          }
+        }
       }
     }
-  }
-});
-
-function updateChart() {
-  const labels = tasks.map(t => t.name);
-  const data = tasks.map(t => t.percent);
-  chart.data.labels = labels;
-  chart.data.datasets[0].data = data;
-  chart.update();
-}
-
-function updateHistory() {
-  const today = new Date();
-  const dateKey = today.toISOString().split('T')[0];
-  const avg = tasks.length ? Math.round(tasks.reduce((acc, t) => acc + t.percent, 0) / tasks.length) : 0;
-
-  history[dateKey] = avg;
-  localStorage.setItem('history', JSON.stringify(history));
-  renderHistoryChart();
-  renderSummaryStats();
-}
-
-function renderHistoryChart() {
-  const keys = Object.keys(history).slice(-7);
-  const values = keys.map(k => history[k]);
-
-  historyChart.data.labels = keys;
-  historyChart.data.datasets[0].data = values;
-  historyChart.update();
-}
-
-// 📊 Summary Calculation Functions
-function renderSummaryStats() {
-  const today = getTodayAvg();
-  const week = getTimeFrameAvg(7);
-  const month = getTimeFrameAvg(30);
-  const year = getTimeFrameAvg(365);
-
-  document.getElementById("summary-today").textContent = today + "%";
-  document.getElementById("summary-week").textContent = week + "%";
-  document.getElementById("summary-month").textContent = month + "%";
-  document.getElementById("summary-year").textContent = year + "%";
-}
-
-  // You can add these to the DOM instead of console if needed.
-
-
-function getTodayAvg() {
-  const today = new Date().toISOString().split('T')[0];
-  return history[today] || 0;
-}
-
-function getTimeFrameAvg(days) {
-  const today = new Date();
-  const dates = Object.keys(history).filter(dateStr => {
-    const date = new Date(dateStr);
-    const diff = (today - date) / (1000 * 60 * 60 * 24);
-    return diff <= days;
   });
-
-  const values = dates.map(d => history[d]);
-  if (!values.length) return 0;
-  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
-window.onload = () => {
-  renderTasks();
-  updateChart();
-  renderHistoryChart();
-  renderSummaryStats();
+function generateColors(n) {
+  const colors = [
+    "#10b981", "#3b82f6", "#f59e0b", "#ef4444",
+    "#8b5cf6", "#ec4899", "#14b8a6", "#eab308"
+  ];
+  return Array.from({ length: n }, (_, i) => colors[i % colors.length]);
+}
+
+function updateHistoryChart() {
+  const data = JSON.parse(localStorage.getItem("taskHistory") || "{}");
+  const result = [];
+
+  for (let date in data) {
+    const tasks = data[date];
+    const totalPercent = tasks.reduce((sum, t) => sum + t.percent, 0);
+    const avg = tasks.length ? Math.round(totalPercent / tasks.length) : 0;
+    result.push({ date, percent: avg });
+  }
+
+  result.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const ctx = document.getElementById("historyChart").getContext("2d");
+  if (historyChart) historyChart.destroy();
+
+  historyChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: result.map(r => r.date),
+      datasets: [{
+        label: "Average Completion %",
+        data: result.map(r => r.percent),
+        borderColor: "#6366f1",
+        backgroundColor: "#6366f140",
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+}
+function showHistory(range) {
+  const allData = JSON.parse(localStorage.getItem("taskHistory") || "{}");
+  const output = document.getElementById("historyOutput");
+  output.innerHTML = "";
+
+  const today = new Date();
+  const selected = [];
+
+  for (let dateStr in allData) {
+    const date = new Date(dateStr);
+
+    let include = false;
+    if (range === "yesterday") {
+      const yest = new Date(today);
+      yest.setDate(today.getDate() - 1);
+      include = date.toDateString() === yest.toDateString();
+    } else if (range === "last7") {
+      const past = new Date(today);
+      past.setDate(today.getDate() - 7);
+      include = date >= past && date <= today;
+    } else if (range === "last30") {
+      const past = new Date(today);
+      past.setDate(today.getDate() - 30);
+      include = date >= past && date <= today;
+    } else if (range === "year") {
+      include = date.getFullYear() === today.getFullYear();
+    }
+
+    if (include) selected.push({ date: dateStr, tasks: allData[dateStr] });
+  }
+
+  if (selected.length === 0) {
+    output.innerHTML = "<p>No history found for this range.</p>";
+    return;
+  }
+
+  selected.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  selected.forEach(entry => {
+    const header = document.createElement("h3");
+    header.textContent = `📅 ${entry.date}`;
+    output.appendChild(header);
+
+    entry.tasks.forEach(task => {
+      const p = document.createElement("p");
+      p.textContent = `• ${task.text} – ${task.percent}%`;
+      output.appendChild(p);
+    });
+  });
+}
+
+
+window.onload = function () {
+  loadTasks();
+  updateCompletionChart();
+  updateHistoryChart();
 };
+
+
