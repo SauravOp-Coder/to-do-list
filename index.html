@@ -13,28 +13,6 @@
   </header>
 
   <main class="container">
-    <section class="summary-box">
-      <h2>📊 Your Progress Summary</h2>
-      <div class="summary-grid">
-        <div class="summary-card">
-          <h3>Today</h3>
-          <p id="summary-today">--%</p>
-        </div>
-        <div class="summary-card">
-          <h3>Last 7 Days</h3>
-          <p id="summary-week">--%</p>
-        </div>
-        <div class="summary-card">
-          <h3>Last 30 Days</h3>
-          <p id="summary-month">--%</p>
-        </div>
-        <div class="summary-card">
-          <h3>Last 365 Days</h3>
-          <p id="summary-year">--%</p>
-        </div>
-      </div>
-    </section>
-    
     <section class="task-section">
       <div class="task-header">
         <input type="text" id="taskInput" placeholder="Add new task..." />
@@ -53,9 +31,22 @@
         <canvas id="historyChart"></canvas>
       </div>
     </section>
+    <section class="history-filter-section">
+  <h2>📜 View Task History</h2> <br>
+  <div class="history-buttons">
+    <button onclick="showHistory('yesterday')">Yesterday</button>
+    <button onclick="showHistory('last7')">Last 7 Days</button>
+    <button onclick="showHistory('last30')">Last 30 Days</button>
+    <button onclick="showHistory('year')">This Year</button>
+  </div>
+  <div id="historyOutput"></div>
+</section>
+
   </main>
 
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="script.js"></script>
+  <script src="script2.js"></script>
+ 
 </body>
 </html>
